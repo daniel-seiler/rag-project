@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from enum import Enum
 
-DOC_LOCATION = "/home/uncreative/Git/pcl-documentation/"
+DOC_LOCATION = "/home/uncreative/Git/pcl-documentation/"    #TODO remove absolute path
 DOC_STARTPOINT = "modules.html"
 
 df = pd.DataFrame(columns=['name', 'type', 'parent', 'source', 'description'])
@@ -28,6 +28,7 @@ class DocTypes(Enum):
                 return t
         print("Error: type for {} not found".format(header))
         return None
+
 def get_internal_links(soup: BeautifulSoup) -> list:
     links = []
     href_pattern = re.compile("https?://")  #TODO make regex as parameter
@@ -58,7 +59,6 @@ def analyse_description(soup: BeautifulSoup, parent: str, source: str) -> list:
     code = description.find("a", {"class": "el"})
     href_pattern = re.compile(".*#l\d+")
     if data_type is DocTypes.FUNCTION and code is not None and href_pattern.match(code["href"]):
-        print(code["href"])
         data.append(get_code(soup, name, parent, source))
     return data
 
