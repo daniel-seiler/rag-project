@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 import re
 import pandas as pd
-import numpy as np
 from enum import Enum
 
 DOC_LOCATION = "/home/uncreative/Git/pcl-documentation/"    #TODO remove absolute path
@@ -37,29 +36,50 @@ def get_internal_links(soup: BeautifulSoup) -> list:
             links.append(a['href'])
     return links
 
-def get_code(soup: BeautifulSoup, name: str, parent: str, source: str) -> list:
+def get_code(soup: BeautifulSoup, line: str, name: str, parent: str, source: str) -> list:
+    code = soup.find("a", {"name": line}).parent
+    code_block_started = False
+    open_parenthesis = 0
+    code_content = ''
+    while (not code_block_started) or (open_parenthesis != 0):
+        if code is None:
+            break
+        code.find_next("span", {"class": "lineno"}).decompose()
+        new_line = code.get_text(strip=True)
+        code_content += new_line
+        code_content += "\n"
+        if "{" in new_line:
+            code_block_started = True
+            open_parenthesis += 1
+        if "}" in new_line:
+            open_parenthesis -= 1
+        code = code.find_next("div", {"class": "line"})
     return [
         name,
         DocTypes.CODE.value,
         parent,
         source,
+        code_content
     ]
 
 def analyse_description(soup: BeautifulSoup, parent: str, source: str) -> list:
     name = soup.get_text()[2:]
     data_type = DocTypes.get_type_from_header(soup.find_previous("h2", {"class": "groupheader"}).get_text())
-    description = soup.find_next("div", {"class": "memdoc"})
+    data_description = soup.find_next("div", {"class": "memdoc"})
     data = [[
         name,
         data_type.value,
         parent,
         source,
-        description.get_text()
+        data_description.get_text()
     ]]
-    code = description.find("a", {"class": "el"})
-    href_pattern = re.compile(".*#l\d+")
+    code = data_description.find("a", {"class": "el"})
+    href_pattern = re.compile("(?P<path>.*)#(?P<line>l\d+)")
     if data_type is DocTypes.FUNCTION and code is not None and href_pattern.match(code["href"]):
-        data.append(get_code(soup, name, parent, source))
+        match = href_pattern.match(code["href"])
+        with open(DOC_LOCATION + match.group('path'), "r") as f:
+            code_soup = BeautifulSoup(f, "html.parser")
+        data.append(get_code(code_soup, match.group('line'), name, parent, code["href"]))
     return data
 
 
@@ -87,7 +107,7 @@ for module_location in modules:
     # Analyse detailed documentations
     for detailed_description in module.find_all("h2", {"class": "memtitle"}):
         df = pd.concat([pd.DataFrame(analyse_description(detailed_description,
-                                                         module.find("div", {"class": "title"}).get_text(),
+                                                         module_location,
                                                          module_location),
                                      columns=df.columns),
                         df])
@@ -113,7 +133,7 @@ for module_location in modules:
         # Analyse contents
         for detailed_description in page.find_all("h2", {"class": "memtitle"}):
             df = pd.concat([pd.DataFrame(analyse_description(detailed_description,
-                                                             page.find("div", {"class": "title"}).get_text(),
+                                                             module_location,
                                                              link),
                                          columns=df.columns),
                             df])
