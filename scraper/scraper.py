@@ -91,18 +91,21 @@ with open(DOC_LOCATION + DOC_STARTPOINT, "r") as f:
 for module_location in modules:
     with open(DOC_LOCATION + module_location, "r") as f:
         module = BeautifulSoup(f, "html.parser")
-    data_to_append = [
+
+    # Get description
+    description_list = []
+    for element in module.find("div", {"class": "contents"}):
+        if element.name == "div" and "memitem" in element.get("class", []):
+            break
+        description_list.append(element.get_text())
+    description = ''.join(description_list).strip()
+    df.loc[len(df)] = [
         module.find("div", {"class": "title"}).get_text(),
         DocTypes.MODULE.value,
         None,
-        module_location
+        module_location,
+        description
     ]
-    description = module.find("h1")
-    if description is not None:
-        data_to_append.append(description.find_next("p").get_text())
-    else:
-        data_to_append.append(None)
-    df.loc[len(df)] = data_to_append
 
     # Analyse detailed documentations
     for detailed_description in module.find_all("h2", {"class": "memtitle"}):
@@ -122,7 +125,7 @@ for module_location in modules:
 
     # Analyse single class
     for link in further_links:
-        with open(DOC_LOCATION + link, "r") as f:               #TODO use this for module?
+        with open(DOC_LOCATION + link, "r") as f:
             page = BeautifulSoup(f, "html.parser")
         description_list = []
         for element in page.find("div", {"class": "contents"}):
