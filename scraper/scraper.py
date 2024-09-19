@@ -6,7 +6,7 @@ from enum import Enum
 DOC_LOCATION = "/home/uncreative/Git/pcl-documentation/"    #TODO remove absolute path
 DOC_STARTPOINT = "modules.html"
 
-df = pd.DataFrame(columns=['name', 'type', 'parent', 'source', 'description'])
+df = pd.DataFrame(columns=['name', 'depth', 'type', 'parent', 'source', 'description'])
 
 class DocTypes(Enum):
     MODULE = "module"
@@ -56,18 +56,20 @@ def get_code(soup: BeautifulSoup, line: str, name: str, parent: str, source: str
         code = code.find_next("div", {"class": "line"})
     return [
         name,
+        2,
         DocTypes.CODE.value,
         parent,
         source,
         code_content
     ]
 
-def analyse_description(soup: BeautifulSoup, parent: str, source: str) -> list:
+def analyse_description(soup: BeautifulSoup, depth: int, parent: str, source: str) -> list:
     name = soup.get_text()[2:]
     data_type = DocTypes.get_type_from_header(soup.find_previous("h2", {"class": "groupheader"}).get_text())
     data_description = soup.find_next("div", {"class": "memdoc"})
     data = [[
         name,
+        depth,
         data_type.value,
         parent,
         source,
@@ -101,6 +103,7 @@ for module_location in modules:
     description = ''.join(description_list).strip()
     df.loc[len(df)] = [
         module.find("div", {"class": "title"}).get_text(),
+        0,
         DocTypes.MODULE.value,
         None,
         module_location,
@@ -110,6 +113,7 @@ for module_location in modules:
     # Analyse detailed documentations
     for detailed_description in module.find_all("h2", {"class": "memtitle"}):
         df = pd.concat([pd.DataFrame(analyse_description(detailed_description,
+                                                         1,
                                                          module_location,
                                                          module_location),
                                      columns=df.columns),
@@ -133,9 +137,18 @@ for module_location in modules:
                 break
             description_list.append(element.get_text())
         description = ''.join(description_list).strip()
+        df.loc[len(df)] = [
+            page.find("div", {"class": "title"}).get_text(),
+            1,
+            DocTypes.CLASS.value,
+            module_location,
+            link,
+            description
+        ]
         # Analyse contents
         for detailed_description in page.find_all("h2", {"class": "memtitle"}):
             df = pd.concat([pd.DataFrame(analyse_description(detailed_description,
+                                                             2,
                                                              module_location,
                                                              link),
                                          columns=df.columns),
