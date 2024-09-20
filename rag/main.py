@@ -20,7 +20,7 @@ def main():
     if "pipeline_initialized" not in st.session_state:
         st.session_state["pipeline_initialized"] = False
     if not st.session_state["pipeline_initialized"]:
-        indexer.run("./data/genai/")
+        indexer.run("./scraper/data")
         st.session_state["pipeline_initialized"] = True
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
