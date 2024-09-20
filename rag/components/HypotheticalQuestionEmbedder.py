@@ -74,7 +74,7 @@ class HypotheticalQuestionEmbedder:
                 for question in result["adapter"]["output"]:
                     meta_info = document.meta.copy()
                     meta_info["original_text"] = document.content
-                    output_list.append(Document(content=question, meta=meta_info))
+                    output_list.append(Document(content=question.strip(), meta=meta_info))
                 pbar.update(1)
         output_list = self.embedder.run(output_list)["documents"]
         return {"question_embeddings": output_list}
