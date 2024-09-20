@@ -7,6 +7,16 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
+haystack-ai = "^2.5.1"
+streamlit = "^1.38.0"
+pandas = "^2.2.2"
+qdrant-haystack = "^6.0.0"
+ollama-haystack = "^1.0.0"
+pypdf = "^5.0.0"
+markdown-it-py = "^3.0.0"
+mdit-plain = "^1.0.1"
+sentence-transformers = "^3.1.1"
+cryptography = "^43.0.1"
 
 
 [build-system]
