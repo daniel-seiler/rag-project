@@ -26,12 +26,18 @@ class HypotheticalQuestionEmbedder:
                                                             "max_tokens": 400},
                                         )
         self.prompt_builder = PromptBuilder(
-            template="""Gegeben ist der folgende Text:
-            {{text}}
-            
-            Formuliere genau {{num_questions}} hypothetische Fragen, die aus dem Text abgeleitet werden können. Trenne die Fragen jeweils von einander durch ein semikolon und Zeilenumbruch.
-            
-            Deine Antwort soll genau so formatiert sein: Frage1;Frage2;Frage3 und nichts außer den Fragen enthalten.
+            template="""
+Given the following text as part of the description for a {{document.meta["type"]}} in a software documentation:
+{{document.content}}
+
+{% if document.meta["code"] != '' %}
+    and the corresponding code snippet:
+    {{document.meta["code"]}}
+{% endif %}
+
+Formulate exactly {{num_questions}} hypothetical questions, which can be derived from the text. Seperate the questions from each other using a semicolon and newline character.
+
+Your answer should be forumlated exactly like this: Question1;\nQuestion2;\nQuestion3 and your answer should contain nothing other than the questions.
             """
         )
         self.adapter = OutputAdapter(
@@ -39,7 +45,7 @@ class HypotheticalQuestionEmbedder:
             output_type=List[Document],
             custom_filters={"question_splitter": lambda questions: questions[0].split(";")}
         )
-        self.embedder = SentenceTransformersDocumentEmbedder(model=self.embedder_model, progress_bar=True)
+        self.embedder = SentenceTransformersDocumentEmbedder(model=self.embedder_model, meta_fields_to_embed=["code", "type"])
         self.embedder.warm_up()
         logger.info(f"Initialized HypotheticalQuestionEmbedder with generator model: {self.generator_model}, embedder model: {self.embedder_model}")
         self._build_pipeline()
@@ -80,7 +86,7 @@ class HypotheticalQuestionEmbedder:
         output_list: List[Document] = []
         tqdm.write("Generating hypothetical questions...")
         def process_document(document):
-            result = self.pipeline.run(data={"prompt_builder": {"text": document.content, "num_questions": self.num_questions}})
+            result = self.pipeline.run(data={"prompt_builder": {"document": document, "num_questions": self.num_questions}})
             questions = result["adapter"]["output"]
             if print_questions:
                 print(questions)
@@ -98,9 +104,14 @@ class HypotheticalQuestionEmbedder:
                 self.loop_progress += 1
                 pbar.update(1)
         logger.info("Embedding hypothetical questions...")
-        time.sleep(5)
-        output_list = self.embedder.run(output_list)["documents"]
-        return {"question_embeddings": output_list}
+        print("Embedding hypothetical questions...")
+        time.sleep(15)
+        return_list = []
+        chunk_size = max(1, len(output_list) // 10)
+        output_chunks = [output_list[i:i + chunk_size] for i in range(0, len(output_list), chunk_size)]
+        for chunk in output_chunks:
+            return_list.extend(self.embedder.run(chunk)["documents"])
+        return {"question_embeddings": return_list}
         
     
 

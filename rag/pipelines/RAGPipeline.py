@@ -9,27 +9,32 @@ from haystack_integrations.components.generators.ollama import OllamaChatGenerat
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.routers import TextLanguageRouter
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.components.connectors.langfuse import LangfuseConnector
 
+from typing import Tuple, List
 
 class RAGPipeline:
     def __init__(self, model="sentence-transformers/all-mpnet-base-v2", document_store_url="http://localhost:6333"):
         self.rag_pipeline = Pipeline()
         self.template = """
-Beantworte die Frage basierend des gegebenen Kontexts und Code Ausschnitte.
-
-Kontext:
+Answer the question based on the given context and code snippets, if code is provided.
+Your answer should include links from the context that are relevant to the question.
+Context:
 {% for document in documents %} 
     {{ document.meta["original_text"] }}
+    {% if document.meta["code"] != '' %}
+        Code:
+        {{ document.meta["code"] }}
+    {% endif %}
+        Link: {{ document.meta["source"] }}
 {% endfor %}
 
-Code:
 
-
-Frage: {{ question }}
-Antwort:
+Question: {{ question }}
+Answer:
 """
         self.model = model
         self.document_store_url = document_store_url
@@ -40,6 +45,7 @@ Antwort:
                                 "temperature": 0.1,
                             })
         self.document_store = QdrantDocumentStore(url=self.document_store_url)
+        self.language_router = TextLanguageRouter(languages=["en"])
         self.prompt_embedder = SentenceTransformersTextEmbedder(model=self.model)
         self.document_retriever = QdrantEmbeddingRetriever(document_store=self.document_store)
         self.prompt_builder = ChatPromptBuilder(template=[ChatMessage.from_user(self.template)])
@@ -47,6 +53,7 @@ Antwort:
         self._connect_components()
 
     def _build_pipeline(self):
+        self.rag_pipeline.add_component("language_router", self.language_router)
         self.rag_pipeline.add_component("embedder", self.prompt_embedder)
         self.rag_pipeline.add_component("retriever", self.document_retriever)
         self.rag_pipeline.add_component("tracer", LangfuseConnector("RAGPipeline trace"))
@@ -54,18 +61,23 @@ Antwort:
         self.rag_pipeline.add_component("llm", self.llm_generator)
 
     def _connect_components(self):
+        self.rag_pipeline.connect("language_router.en", "embedder.text") 
         self.rag_pipeline.connect("embedder.embedding", "retriever.query_embedding")
         self.rag_pipeline.connect("retriever", "prompt_builder.documents")
         self.rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 
-    def run(self, prompt, messages):
+    def run(self, prompt, messages) -> Tuple[bool, List[str]]:
         chat_messages = self._create_chat_messages(messages)
-        return self.rag_pipeline.run(data=
+        output = self.rag_pipeline.run(data=
             {
-                "embedder": {"text": prompt},
+                "language_router": {"text": prompt},
                 "prompt_builder": {"template_variables":{"question": prompt}, "template":chat_messages},
             }
-        )['llm']
+        )
+        if "language_router" in output.keys():
+            return False, "Sorry, I can only answer questions in English."
+        else:
+            return True, output["llm"]["replies"][0].content
         
     def _create_chat_messages(self, messages):
         chat_messages = []

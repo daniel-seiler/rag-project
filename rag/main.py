@@ -17,6 +17,11 @@ def clear_chat():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+def response_generator(response):
+    for word in response.split():
+        yield word + " "
+        time.sleep(0.05)
+
 def main():
     st.title("Simple chat")
     if st.button("Clear chat"):
@@ -58,9 +63,14 @@ def main():
         st.session_state.response_text = ""
         generator.llm_generator.streaming_callback = lambda chunk: streaming_callback(chunk, response_container)
 
-        generator.run(prompt, st.session_state.messages)
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": st.session_state.response_text})
+        success, output = generator.run(prompt, st.session_state.messages)
+        if not success:
+            response = st.write_stream(response_generator(output))
+            st.session_state.messages.append({"role": "system", "content": response})
+
+        else:
+            # Add assistant response to chat history
+            st.session_state.messages.append({"role": "assistant", "content": st.session_state.response_text})
         
 
 
