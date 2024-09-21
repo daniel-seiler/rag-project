@@ -15,8 +15,8 @@ from components.HypotheticalQuestionEmbedder import HypotheticalQuestionEmbedder
 from components.CodeCSVToDocument import CodeCSVToDocument
 
 class IndexerPipeline():
-    def __init__(self, mime_types:List[str] = ["text/plain", "application/pdf", "text/markdown", "text/csv"], split_by:str="sentence", split_length:int = 10, 
-                 split_overlap:int = 3, split_threshold:int = 3, embedder_model:str= 'sentence-transformers/all-mpnet-base-v2', generator_model:str="llama3.1", num_questions:str=3):
+    def __init__(self, mime_types:List[str] = ["text/plain", "application/pdf", "text/markdown", "text/csv"], split_by:str="sentence", split_length:int = 4, 
+                 split_overlap:int = 2, split_threshold:int = 2, embedder_model:str= 'sentence-transformers/all-mpnet-base-v2', generator_model:str="llama3.1", num_questions:str=3):
         
         self.mime_types = mime_types
         self.document_store = QdrantDocumentStore(url="http://localhost:6333", recreate_index=True)
@@ -35,6 +35,7 @@ class IndexerPipeline():
         self.hyqe_embedder = HypotheticalQuestionEmbedder(embedder_model=embedder_model, generator_model=generator_model, num_questions=num_questions)
         self.document_writer = DocumentWriter(document_store=self.document_store)
         self.pre_processing_pipeling = Pipeline()
+        self.pipeline_status_done = False
         
         self.build_pipeline()
         self.connect_components()
@@ -69,6 +70,11 @@ class IndexerPipeline():
         self.pre_processing_pipeling.connect("MetadataRouter.table/csv", "Rejoiner")
         self.pre_processing_pipeling.connect("Rejoiner", "HyQEEmbedder")
         self.pre_processing_pipeling.connect("HyQEEmbedder", "DocumentWriter")
+    def get_progress(self):
+        if self.hyqe_embedder.total_docs != 0:
+            return self.hyqe_embedder.loop_progress/self.hyqe_embedder.total_docs
+        else:
+            return 0
     
     def run(self, folder_path:str):
         self.pre_processing_pipeling.draw(folder_path+"/pipeline.png")
@@ -77,6 +83,7 @@ class IndexerPipeline():
                 "FileTypeRouter": {"sources": list(Path(folder_path).glob("**/*"))},
             }
         )
+        self.pipeline_status_done = True
 
     
 

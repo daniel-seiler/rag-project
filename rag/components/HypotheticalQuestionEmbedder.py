@@ -7,6 +7,7 @@ from haystack_integrations.components.generators.ollama import OllamaGenerator
 from typing import Dict, Any, List, Optional
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,8 @@ class HypotheticalQuestionEmbedder:
         self.generator_model = generator_model
         self.embedder_model = embedder_model
         self.num_questions = num_questions
+        self.loop_progress = 0
+        self.total_docs = 0
         self.pipeline = Pipeline()
         self.generator = OllamaGenerator(model=self.generator_model, 
                                          generation_kwargs={"num_predict": -2, "temperature": 0.75,
@@ -58,6 +61,8 @@ class HypotheticalQuestionEmbedder:
             generator_model=self.generator_model,
             embedder_model=self.embedder_model,
             num_questions=self.num_questions,
+            loop_progress=self.loop_progress,
+            total_docs=self.total_docs
         )
         data["pipeline"] = self.pipeline.to_dict()
         return data
@@ -71,9 +76,9 @@ class HypotheticalQuestionEmbedder:
     @component.output_types(question_embeddings=List[Document])
     def run(self, documents: List[Document], print_questions: Optional[bool] = False):
         logger.info("Generating hypothetical questions...")
+        self.total_docs = len(documents)
         output_list: List[Document] = []
         tqdm.write("Generating hypothetical questions...")
-
         def process_document(document):
             result = self.pipeline.run(data={"prompt_builder": {"text": document.content, "num_questions": self.num_questions}})
             questions = result["adapter"]["output"]
@@ -90,8 +95,10 @@ class HypotheticalQuestionEmbedder:
             futures = {executor.submit(process_document, doc): doc for doc in documents}
             for future in as_completed(futures):
                 output_list.extend(future.result())
+                self.loop_progress += 1
                 pbar.update(1)
         logger.info("Embedding hypothetical questions...")
+        time.sleep(5)
         output_list = self.embedder.run(output_list)["documents"]
         return {"question_embeddings": output_list}
         
