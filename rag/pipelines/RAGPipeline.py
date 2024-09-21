@@ -12,12 +12,15 @@ class RAGPipeline:
     def __init__(self, model="sentence-transformers/all-mpnet-base-v2", document_store_url="http://localhost:6333"):
         self.rag_pipeline = Pipeline()
         self.template = """
-Beantworte die Frage basierend des gegebenen Kontexts.
+Beantworte die Frage basierend des gegebenen Kontexts und Code Ausschnitte.
 
 Kontext:
 {% for document in documents %} 
     {{ document.meta["original_text"] }}
 {% endfor %}
+
+Code:
+
 
 Frage: {{ question }}
 Antwort:
