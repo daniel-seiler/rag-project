@@ -15,7 +15,7 @@ from components.HypotheticalQuestionEmbedder import HypotheticalQuestionEmbedder
 from components.CSVToDocument import CSVToDocument
 
 class IndexerPipeline():
-    def __init__(self, mime_types:List[str] = ["text/plain", "application/pdf", "text/markdown", "table/csv"], split_by:str="sentence", split_length:int = 10, 
+    def __init__(self, mime_types:List[str] = ["text/plain", "application/pdf", "text/markdown", "text/csv"], split_by:str="sentence", split_length:int = 10, 
                  split_overlap:int = 3, split_threshold:int = 3, embedder_model:str= 'sentence-transformers/all-mpnet-base-v2', generator_model:str="llama3.1", num_questions:str=3):
         
         self.mime_types = mime_types
@@ -57,7 +57,7 @@ class IndexerPipeline():
         self.pre_processing_pipeling.connect("FileTypeRouter.application/pdf", "PDFConverter.sources")
         self.pre_processing_pipeling.connect("FileTypeRouter.text/markdown", "MarkdownConverter.sources")
         self.pre_processing_pipeling.connect("FileTypeRouter.text/plain", "TextConverter.sources")
-        self.pre_processing_pipeling.connect("FileTypeRouter.table/csv", "CSVConverter.sources")
+        self.pre_processing_pipeling.connect("FileTypeRouter.text/csv", "CSVConverter.sources")
         self.pre_processing_pipeling.connect("PDFConverter", "DocumentJoiner")
         self.pre_processing_pipeling.connect("MarkdownConverter", "DocumentJoiner")
         self.pre_processing_pipeling.connect("TextConverter", "DocumentJoiner")

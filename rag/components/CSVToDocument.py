@@ -24,6 +24,7 @@ class CSVToDocument:
 
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None) -> Dict[str, Any]:
+        logger.info("Converting CSV files to documents...")
         documents = []
         for source in sources:
             with open(source, "r", encoding=self.encoding) as f:
