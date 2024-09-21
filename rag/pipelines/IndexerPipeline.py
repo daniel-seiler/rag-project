@@ -12,7 +12,7 @@ from haystack import Pipeline
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 from components.HypotheticalQuestionEmbedder import HypotheticalQuestionEmbedder
-from components.CSVToDocument import CSVToDocument
+from components.CodeCSVToDocument import CodeCSVToDocument
 
 class IndexerPipeline():
     def __init__(self, mime_types:List[str] = ["text/plain", "application/pdf", "text/markdown", "text/csv"], split_by:str="sentence", split_length:int = 10, 
@@ -24,7 +24,7 @@ class IndexerPipeline():
         self.document_cleaner = DocumentCleaner()
         self.document_joiner = DocumentJoiner()
         self.pdf_converter = PyPDFToDocument()
-        self.csv_converter = CSVToDocument()
+        self.csv_converter = CodeCSVToDocument()
         self.markdown_converter = MarkdownToDocument()
         self.text_converter = TextFileToDocument()
         self.metadata_router = MetadataRouter(rules={

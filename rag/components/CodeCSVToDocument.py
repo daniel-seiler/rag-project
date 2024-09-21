@@ -9,7 +9,7 @@ from haystack.components.converters.utils import get_bytestream_from_source, nor
 logger = logging.getLogger(__name__)
 
 @component
-class CSVToDocument:
+class CodeCSVToDocument:
     def __init__(self, encoding:str = "utf-8"):
         self.encoding = encoding
         self.code_storage_dict: Dict[str, str] = dict()
@@ -19,7 +19,7 @@ class CSVToDocument:
         return default_to_dict(self, encoding=self.encoding)
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CSVToDocument":
+    def from_dict(cls, data: Dict[str, Any]) -> "CodeCSVToDocument":
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
@@ -51,11 +51,12 @@ class CSVToDocument:
                             documents.append(document)
                         else:
                             self.needs_code_dict[row.get("name")] = Document(content=content, meta=meta_vals)
-
+                if len(self.needs_code_dict) > 0:
+                    documents.extend(list(self.needs_code_dict.values()))
         return {"documents": documents}
 
 if __name__ == "__main__":
-    converter = CSVToDocument()
+    converter = CodeCSVToDocument()
     results = converter.run(sources=["scraper/data.csv"])
     documents = results["documents"]
     print(documents[1].content)
