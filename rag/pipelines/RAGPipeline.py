@@ -1,3 +1,8 @@
+import os
+os.environ["LANGFUSE_HOST"] = "https://cloud.langfuse.com"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
 from haystack import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.ollama import OllamaChatGenerator
@@ -6,6 +11,7 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
+from haystack_integrations.components.connectors.langfuse import LangfuseConnector
 
 
 class RAGPipeline:
@@ -43,6 +49,7 @@ Antwort:
     def _build_pipeline(self):
         self.rag_pipeline.add_component("embedder", self.prompt_embedder)
         self.rag_pipeline.add_component("retriever", self.document_retriever)
+        self.rag_pipeline.add_component("tracer", LangfuseConnector("RAGPipeline trace"))
         self.rag_pipeline.add_component("prompt_builder", self.prompt_builder)
         self.rag_pipeline.add_component("llm", self.llm_generator)
 
