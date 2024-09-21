@@ -19,6 +19,8 @@ sentence-transformers = "^3.1.1"
 cryptography = "^43.0.1"
 beautifulsoup4 = "^4.12.3"
 chardet = "^5.2.0"
+langfuse-haystack = "^0.4.0"
+langdetect = "^1.0.9"
 
 
 [build-system]
