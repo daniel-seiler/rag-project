@@ -1,3 +1,4 @@
+
 import re
 import os
 import pandas as pd
@@ -9,6 +10,7 @@ DOC_LOCATION = os.environ["PCL_PATH"]
 DOC_STARTPOINT = "modules.html"
 
 df = pd.DataFrame(columns=['name', 'depth', 'type', 'parent', 'source', 'description'])
+
 
 
 class DocTypes(Enum):
@@ -30,6 +32,7 @@ class DocTypes(Enum):
                 return t
         print("Error: type for {} not found".format(header))
         return None
+
 
 
 def get_internal_links(soup: BeautifulSoup) -> list:
@@ -67,7 +70,6 @@ def analyse_code(soup: BeautifulSoup, line: str, name: str, parent: str, source:
         source,
         code_content
     ]
-
 
 def analyse_description(soup: BeautifulSoup, depth: int, parent: str, source: str) -> list:
     name = soup.get_text()[2:]
