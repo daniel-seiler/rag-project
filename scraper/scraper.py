@@ -1,12 +1,17 @@
-from bs4 import BeautifulSoup
+
 import re
+import os
 import pandas as pd
 from enum import Enum
+from bs4 import BeautifulSoup
 
-DOC_LOCATION = "/home/uncreative/Git/pcl-documentation/"    #TODO remove absolute path
+
+DOC_LOCATION = os.environ["PCL_PATH"]
 DOC_STARTPOINT = "modules.html"
 
 df = pd.DataFrame(columns=['name', 'depth', 'type', 'parent', 'source', 'description'])
+
+
 
 class DocTypes(Enum):
     MODULE = "module"
@@ -28,15 +33,18 @@ class DocTypes(Enum):
         print("Error: type for {} not found".format(header))
         return None
 
+
+
 def get_internal_links(soup: BeautifulSoup) -> list:
     links = []
-    href_pattern = re.compile("https?://")  #TODO make regex as parameter
+    href_pattern = re.compile("https?://")
     for a in soup.find_all("a"):
         if not href_pattern.match(a['href']):
             links.append(a['href'])
     return links
 
-def get_code(soup: BeautifulSoup, line: str, name: str, parent: str, source: str) -> list:
+
+def analyse_code(soup: BeautifulSoup, line: str, name: str, parent: str, source: str) -> list:
     code = soup.find("a", {"name": line}).parent
     code_block_started = False
     open_parenthesis = 0
@@ -79,78 +87,60 @@ def analyse_description(soup: BeautifulSoup, depth: int, parent: str, source: st
     href_pattern = re.compile("(?P<path>.*)#(?P<line>l\d+)")
     if data_type is DocTypes.FUNCTION and code is not None and href_pattern.match(code["href"]):
         match = href_pattern.match(code["href"])
-        with open(DOC_LOCATION + match.group('path'), "r") as f:
-            code_soup = BeautifulSoup(f, "html.parser")
-        data.append(get_code(code_soup, match.group('line'), name, parent, code["href"]))
+        with open(DOC_LOCATION + match.group('path'), "r") as f_:
+            code_soup = BeautifulSoup(f_, "html.parser")
+        data.append(analyse_code(code_soup, match.group('line'), name, parent, code["href"]))
     return data
 
 
-# Get all modules:
-with open(DOC_LOCATION + DOC_STARTPOINT, "r") as f:
-    modules = get_internal_links(BeautifulSoup(f, "html.parser"))
-
-# Analyse module page
-for module_location in modules:
-    with open(DOC_LOCATION + module_location, "r") as f:
-        module = BeautifulSoup(f, "html.parser")
-
-    # Get description
+def analyse_class(soup: BeautifulSoup, depth: int, doc_type: DocTypes, parent: str, source: str):
+    global df
     description_list = []
-    for element in module.find("div", {"class": "contents"}):
+    for element in soup.find("div", {"class": "contents"}):
         if element.name == "div" and "memitem" in element.get("class", []):
             break
         description_list.append(element.get_text())
     description = ''.join(description_list).strip()
     df.loc[len(df)] = [
-        module.find("div", {"class": "title"}).get_text(),
-        0,
-        DocTypes.MODULE.value,
-        None,
-        module_location,
+        soup.find("div", {"class": "title"}).get_text(),
+        depth,
+        doc_type.value,
+        parent,
+        source,
         description
     ]
-
-    # Analyse detailed documentations
-    for detailed_description in module.find_all("h2", {"class": "memtitle"}):
+    # Analyse contents
+    for detailed_description in soup.find_all("h2", {"class": "memtitle"}):
         df = pd.concat([pd.DataFrame(analyse_description(detailed_description,
-                                                         1,
-                                                         module_location,
-                                                         module_location),
+                                                         depth + 1,
+                                                         parent,
+                                                         source),
                                      columns=df.columns),
-                        df])
+                         df])
 
-    # Analyse classes
-    # Find links to classes
-    further_links = set()
-    for table in module.find_all("table", {"class": "memberdecls"}):
-        for link in table.find_all("a", {"class": "el"}):
-            if module_location not in link['href'] and "#" not in link['href']:
-                further_links.add(link['href'])
 
-    # Analyse single class
-    for link in further_links:
-        with open(DOC_LOCATION + link, "r") as f:
+# Get all modules:
+with open(DOC_LOCATION + DOC_STARTPOINT, "r") as f:
+    module_locations = get_internal_links(BeautifulSoup(f, "html.parser"))
+
+# Analyse module page
+for module_location in module_locations:
+    with open(DOC_LOCATION + module_location, "r") as f:
+        module_soup = BeautifulSoup(f, "html.parser")
+    analyse_class(module_soup, 0, DocTypes.MODULE, module_location, module_location)
+
+    # Find all paths leading to other elements
+    further_paths = set()
+    for table_element in module_soup.find_all("table", {"class": "memberdecls"}):
+        for path in table_element.find_all("a", {"class": "el"}):
+            if module_location not in path['href'] and "#" not in path['href']:
+                further_paths.add(path['href'])
+
+    # Analyse the found elements
+    for path in further_paths:
+        with open(DOC_LOCATION + path, "r") as f:
             page = BeautifulSoup(f, "html.parser")
-        description_list = []
-        for element in page.find("div", {"class": "contents"}):
-            if element.name == "div" and "memitem" in element.get("class", []):
-                break
-            description_list.append(element.get_text())
-        description = ''.join(description_list).strip()
-        df.loc[len(df)] = [
-            page.find("div", {"class": "title"}).get_text(),
-            1,
-            DocTypes.CLASS.value,
-            module_location,
-            link,
-            description
-        ]
-        # Analyse contents
-        for detailed_description in page.find_all("h2", {"class": "memtitle"}):
-            df = pd.concat([pd.DataFrame(analyse_description(detailed_description,
-                                                             2,
-                                                             module_location,
-                                                             link),
-                                         columns=df.columns),
-                            df])
+        analyse_class(page, 1, DocTypes.CLASS, module_location, path)
+
+# Write data to csv
 df.to_csv("data.csv", index=False)
