@@ -4,6 +4,7 @@ from typing import List
 from haystack.components.writers import DocumentWriter
 from haystack.components.converters import  PyPDFToDocument, MarkdownToDocument, TextFileToDocument
 from haystack.components.preprocessors import DocumentSplitter, DocumentCleaner
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.routers import FileTypeRouter
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.routers import MetadataRouter
@@ -13,6 +14,7 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 from components.HypotheticalQuestionEmbedder import HypotheticalQuestionEmbedder
 from components.CodeCSVToDocument import CodeCSVToDocument
+from components.CustomCSVIndexer import CustomCSVIndexer
 
 class IndexerPipeline():
     def __init__(self, mime_types:List[str] = ["text/plain", "application/pdf", "text/markdown", "text/csv"], split_by:str="sentence", split_length:int = 4, 
@@ -27,12 +29,14 @@ class IndexerPipeline():
         self.csv_converter = CodeCSVToDocument()
         self.markdown_converter = MarkdownToDocument()
         self.text_converter = TextFileToDocument()
+        self.csv_indexer = CustomCSVIndexer(split_length=200, split_overlap=25, split_threshold=25)
         self.metadata_router = MetadataRouter(rules={
-            "table/csv": {"field": "meta.file_type", "operator": "==", "value": "csv"},
+            "text/csv": {"field": "meta.file_type", "operator": "==", "value": "csv"},
             "others": {"field": "meta.file_type", "operator": "!=", "value": "csv"}
         })
         self.document_splitter = DocumentSplitter(split_by=split_by, split_length=split_length, split_overlap=split_overlap, split_threshold=split_threshold)
         self.hyqe_embedder = HypotheticalQuestionEmbedder(embedder_model=embedder_model, generator_model=generator_model, num_questions=num_questions)
+        self.document_embedder = SentenceTransformersDocumentEmbedder(model=embedder_model, meta_fields_to_embed=["type"])
         self.document_writer = DocumentWriter(document_store=self.document_store)
         self.pre_processing_pipeling = Pipeline()
         self.pipeline_status_done = False
@@ -50,8 +54,10 @@ class IndexerPipeline():
         self.pre_processing_pipeling.add_component(instance=self.document_cleaner, name="DocumentCleaner")
         self.pre_processing_pipeling.add_component(instance=self.metadata_router, name="MetadataRouter")
         self.pre_processing_pipeling.add_component(instance=self.document_splitter, name="DocumentSplitter")
+        self.pre_processing_pipeling.add_component(instance=self.csv_indexer, name="CSVIndexer")
         self.pre_processing_pipeling.add_component(instance=DocumentJoiner(), name="Rejoiner")
-        self.pre_processing_pipeling.add_component(instance=self.hyqe_embedder, name="HyQEEmbedder")
+        # self.pre_processing_pipeling.add_component(instance=self.hyqe_embedder, name="HyQEEmbedder")
+        self.pre_processing_pipeling.add_component(instance=self.document_embedder, name="DocumentEmbedder")
         self.pre_processing_pipeling.add_component(instance=self.document_writer, name="DocumentWriter")
 
     def connect_components(self):
@@ -67,9 +73,12 @@ class IndexerPipeline():
         self.pre_processing_pipeling.connect("MetadataRouter.others", "DocumentCleaner")
         self.pre_processing_pipeling.connect("DocumentCleaner", "DocumentSplitter")
         self.pre_processing_pipeling.connect("DocumentSplitter", "Rejoiner")
-        self.pre_processing_pipeling.connect("MetadataRouter.table/csv", "Rejoiner")
-        self.pre_processing_pipeling.connect("Rejoiner", "HyQEEmbedder")
-        self.pre_processing_pipeling.connect("HyQEEmbedder", "DocumentWriter")
+        self.pre_processing_pipeling.connect("MetadataRouter.text/csv", "CSVIndexer")
+        self.pre_processing_pipeling.connect("CSVIndexer", "Rejoiner")
+        # self.pre_processing_pipeling.connect("Rejoiner", "HyQEEmbedder")
+        self.pre_processing_pipeling.connect("Rejoiner", "DocumentEmbedder")
+        # self.pre_processing_pipeling.connect("HyQEEmbedder", "DocumentWriter")
+        self.pre_processing_pipeling.connect("DocumentEmbedder", "DocumentWriter")
     def get_progress(self):
         if self.hyqe_embedder.total_docs != 0:
             return self.hyqe_embedder.loop_progress/self.hyqe_embedder.total_docs

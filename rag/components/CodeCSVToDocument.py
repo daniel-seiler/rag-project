@@ -47,7 +47,7 @@ class CodeCSVToDocument:
                         meta_vals["file_type"] = "csv"
                         if row.get("name") in self.code_storage_dict.keys():
                             document = Document(content=content, meta=meta_vals)
-                            document.meta["code"] = self.code_storage_dict[row.get("name")]
+                            document.content += "\nCode: " + self.code_storage_dict[row.get("name")]
                             documents.append(document)
                         else:
                             self.needs_code_dict[row.get("name")] = Document(content=content, meta=meta_vals)

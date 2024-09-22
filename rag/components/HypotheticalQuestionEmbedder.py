@@ -30,11 +30,6 @@ class HypotheticalQuestionEmbedder:
 Given the following text as part of the description for a {{document.meta["type"]}} in a software documentation:
 {{document.content}}
 
-{% if document.meta["code"] != '' %}
-    and the corresponding code snippet:
-    {{document.meta["code"]}}
-{% endif %}
-
 Formulate exactly {{num_questions}} hypothetical questions, which can be derived from the text. Seperate the questions from each other using a semicolon and newline character.
 
 Your answer should be forumlated exactly like this: Question1;\nQuestion2;\nQuestion3 and your answer should contain nothing other than the questions.
@@ -45,7 +40,7 @@ Your answer should be forumlated exactly like this: Question1;\nQuestion2;\nQues
             output_type=List[Document],
             custom_filters={"question_splitter": lambda questions: questions[0].split(";")}
         )
-        self.embedder = SentenceTransformersDocumentEmbedder(model=self.embedder_model, meta_fields_to_embed=["code", "type"])
+        self.embedder = SentenceTransformersDocumentEmbedder(model=self.embedder_model, meta_fields_to_embed=["type"])
         self.embedder.warm_up()
         logger.info(f"Initialized HypotheticalQuestionEmbedder with generator model: {self.generator_model}, embedder model: {self.embedder_model}")
         self._build_pipeline()
