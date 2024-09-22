@@ -1,6 +1,6 @@
 import streamlit as st
-from pipelines.IndexerPipeline import IndexerPipeline
-from pipelines.RAGPipeline import RAGPipeline
+from rag.pipelines.IndexerPipeline import IndexerPipeline
+from rag.pipelines.RAGPipeline import RAGPipeline
 import time
 import threading
 

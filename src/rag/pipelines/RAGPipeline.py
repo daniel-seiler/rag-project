@@ -14,7 +14,7 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.components.connectors.langfuse import LangfuseConnector
 
-from components.HypotheticalDocumentEmbedding import HypotheticalDocumentEmbedder
+from rag.components.HypotheticalDocumentEmbedding import HypotheticalDocumentEmbedder
 
 from typing import Tuple, List
 

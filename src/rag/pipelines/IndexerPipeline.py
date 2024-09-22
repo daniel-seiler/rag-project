@@ -12,9 +12,9 @@ from haystack.components.routers import MetadataRouter
 from haystack import Pipeline
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
-from components.HypotheticalQuestionEmbedder import HypotheticalQuestionEmbedder
-from components.CodeCSVToDocument import CodeCSVToDocument
-from components.CustomCSVIndexer import CustomCSVIndexer
+from rag.components.HypotheticalQuestionEmbedder import HypotheticalQuestionEmbedder
+from rag.components.CodeCSVToDocument import CodeCSVToDocument
+from rag.components.CustomCSVIndexer import CustomCSVIndexer
 
 class IndexerPipeline():
     def __init__(self, mime_types:List[str] = ["text/plain", "application/pdf", "text/markdown", "text/csv"], split_by:str="sentence", split_length:int = 4, 
