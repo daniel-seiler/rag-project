@@ -14,6 +14,8 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.components.connectors.langfuse import LangfuseConnector
 
+from components.HypotheticalDocumentEmbedding import HypotheticalDocumentEmbedder
+
 from typing import Tuple, List
 
 class RAGPipeline:
@@ -21,19 +23,17 @@ class RAGPipeline:
         self.rag_pipeline = Pipeline()
         self.template = """
 Answer the question based on the given context and code snippets, if code is provided.
-Your answer should include links from the context that are relevant to the question.
 Context:
 {% for document in documents %} 
-    {{ document.meta["original_text"] }}
-    {% if document.meta["code"] != '' %}
-        Code:
-        {{ document.meta["code"] }}
+    {{ document.meta["full_content"] }}
+    {% if document.meta["source"] != "" %}
+        Link: https://pointclouds.org/documentation/{{ document.meta["source"] }}
     {% endif %}
-        Link: {{ document.meta["source"] }}
 {% endfor %}
+Your answer should include links from the context that are relevant to the question.
 
+Question: {{ prompt }}
 
-Question: {{ question }}
 Answer:
 """
         self.model = model
@@ -48,21 +48,23 @@ Answer:
         self.language_router = TextLanguageRouter(languages=["en"])
         self.prompt_embedder = SentenceTransformersTextEmbedder(model=self.model)
         self.document_retriever = QdrantEmbeddingRetriever(document_store=self.document_store)
+        self.hyde_embedder = HypotheticalDocumentEmbedder(embedder_model=self.model)
         self.prompt_builder = ChatPromptBuilder(template=[ChatMessage.from_user(self.template)])
         self._build_pipeline()
         self._connect_components()
 
     def _build_pipeline(self):
-        self.rag_pipeline.add_component("language_router", self.language_router)
-        self.rag_pipeline.add_component("embedder", self.prompt_embedder)
-        self.rag_pipeline.add_component("retriever", self.document_retriever)
         self.rag_pipeline.add_component("tracer", LangfuseConnector("RAGPipeline trace"))
+        self.rag_pipeline.add_component("language_router", self.language_router)
+        # self.rag_pipeline.add_component("embedder", self.prompt_embedder)
+        self.rag_pipeline.add_component("hyde_embedder", self.hyde_embedder)
+        self.rag_pipeline.add_component("retriever", self.document_retriever)
         self.rag_pipeline.add_component("prompt_builder", self.prompt_builder)
         self.rag_pipeline.add_component("llm", self.llm_generator)
 
     def _connect_components(self):
-        self.rag_pipeline.connect("language_router.en", "embedder.text") 
-        self.rag_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+        self.rag_pipeline.connect("language_router.en", "hyde_embedder.text") 
+        self.rag_pipeline.connect("hyde_embedder.hypothetical_embedding", "retriever.query_embedding")
         self.rag_pipeline.connect("retriever", "prompt_builder.documents")
         self.rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 
@@ -71,7 +73,9 @@ Answer:
         output = self.rag_pipeline.run(data=
             {
                 "language_router": {"text": prompt},
-                "prompt_builder": {"template_variables":{"question": prompt}, "template":chat_messages},
+                "hyde_embedder": {"template": chat_messages},
+                "retriever": {"top_k": 5},
+                "prompt_builder": {"template_variables":{"prompt": prompt}, "template":chat_messages},
             }
         )
         if "language_router" in output.keys():
