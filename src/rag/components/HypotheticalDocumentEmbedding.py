@@ -13,13 +13,49 @@ from haystack.utils import Secret
 
 @component
 class HypotheticalDocumentEmbedder:
+    """A class to generate hypothetical document embeddings using a language model and sentence transformer.
+
+    Attributes:
+        instruct_llm (str): The language model to use for instruction generation.
+        nr_completions (int): The number of completions to generate.
+        embedder_model (str): The model to use for embedding documents.
+        prompt_template (str): The template for generating prompts.
+        generator (OllamaChatGenerator): The generator for creating responses from the language model.
+        prompt_builder (ChatPromptBuilder): The builder for creating chat prompts.
+        adapter (OutputAdapter): The adapter for processing the output of the generator.
+        embedder (SentenceTransformersDocumentEmbedder): The embedder for generating document embeddings.
+        pipeline (Pipeline): The pipeline that connects all components.
+
+    Methods:
+        to_dict() -> Dict[str, Any]:
+            Converts the object to a dictionary representation.
+
+        from_dict(cls, data: Dict[str, Any]) -> "HypotheticalDocumentEmbedder":
+            Creates an instance of the class from a dictionary representation.
+
+        run(text: str, template: Optional[List[ChatMessage]]) -> Dict[str, List[float]]:
+            Runs the pipeline to generate a hypothetical document embedding for the given text."""
 
     def __init__(
         self,
         instruct_llm: str = "llama3.1",
         nr_completions: int = 5,
-        embedder_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-    ):
+        embedder_model: str = "sentence-transformers/all-MiniLM-L6-v2",):
+        """Initializes the HypotheticalDocumentEmbedding class with the specified parameters.
+        Args:
+            instruct_llm (str): The language model to use for instruction. Default is "llama3.1".
+            nr_completions (int): The number of completions to generate. Default is 5.
+            embedder_model (str): The model to use for embedding documents. Default is "sentence-transformers/all-MiniLM-L6-v2".
+        Attributes:
+            instruct_llm (str): The language model used for instruction.
+            nr_completions (int): The number of completions to generate.
+            embedder_model (str): The model used for embedding documents.
+            prompt_template (str): The template for generating prompts.
+            generator (OllamaChatGenerator): The generator for creating chat completions.
+            prompt_builder (ChatPromptBuilder): The builder for creating chat prompts.
+            adapter (OutputAdapter): The adapter for processing output.
+            embedder (SentenceTransformersDocumentEmbedder): The embedder for generating document embeddings.
+            pipeline (Pipeline): The pipeline for processing components."""
         self.instruct_llm = instruct_llm
         self.nr_completions = nr_completions
         self.embedder_model = embedder_model
@@ -58,6 +94,17 @@ class HypotheticalDocumentEmbedder:
         self.pipeline.connect("adapter.output", "embedder.documents")
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts the instance to a dictionary representation.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the instance's data, including:
+                - instruct_llm: The instruction language model.
+                - instruct_llm_api_key: The API key for the instruction language model.
+                - nr_completions: The number of completions.
+                - embedder_model: The embedder model.
+                - pipeline: The pipeline's dictionary representation.
+        """
         data = default_to_dict(
             self,
             instruct_llm=self.instruct_llm,
@@ -70,12 +117,32 @@ class HypotheticalDocumentEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HypotheticalDocumentEmbedder":
+        """
+        Create an instance of HypotheticalDocumentEmbedder from a dictionary.
+
+        Args:
+            cls: The class type to instantiate.
+            data (Dict[str, Any]): A dictionary containing the data to instantiate the object.
+
+        Returns:
+            HypotheticalDocumentEmbedder: An instance of HypotheticalDocumentEmbedder with attributes set according to the provided dictionary.
+        """
         hyde_obj = default_from_dict(cls, data)
         hyde_obj.pipeline = Pipeline.from_dict(data["pipeline"])
         return hyde_obj
 
     @component.output_types(hypothetical_embedding=List[float])
-    def run(self, text: str, template: Optional[List[ChatMessage]]):
+    def run(self, text: str, template: Optional[List[ChatMessage]]) -> Dict[str, List[float]]:
+        """
+        Processes the input text and template to generate a hypothetical document embedding.
+
+        Args:
+            text (str): The input text for which the embedding is to be generated.
+            template (Optional[List[ChatMessage]]): A list of chat messages used as a template for the prompt.
+
+        Returns:
+            Dict[str, List[float]]: A dictionary containing the hypothetical document embedding as a list of floats.
+        """
         if template:
             template.pop()
             template.append(ChatMessage.from_user(self.prompt_template))
