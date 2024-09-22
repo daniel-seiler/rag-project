@@ -4,26 +4,75 @@ from typing import List, Dict, Any, Union, Optional, Tuple
 
 from haystack import component, Document, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 logger = logging.getLogger(__name__)
 
 @component
 class CodeCSVToDocument:
+    """
+    A class to convert CSV files containing code and other types of data into Document objects.
+    Attributes:
+        encoding (str): The encoding used to read the CSV files. Default is "utf-8".
+        code_storage_dict (Dict[str, str]): A dictionary to store code descriptions temporarily.
+        needs_code_dict (Dict[str, Document]): A dictionary to temporarily store Document objects that need code descriptions.
+    Methods:
+        to_dict() -> Dict[str, Any]:
+            Converts the instance to a dictionary.
+        from_dict(cls, data: Dict[str, Any]) -> "CodeCSVToDocument":
+            Creates an instance of the class from a dictionary.
+        run(sources: List[Union[str, Path, ByteStream]], meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None) -> Dict[str, List[Document]]:
+            Converts CSV files to Document objects.
+    """
     def __init__(self, encoding:str = "utf-8"):
+        """
+        Initializes the CodeCSVToDocument instance.
+
+        Args:
+            encoding (str): The encoding format to be used for reading files. Defaults to "utf-8".
+
+        Attributes:
+            encoding (str): Stores the encoding format.
+            code_storage_dict (Dict[str, str]): A dictionary to store code snippets with their identifiers.
+            needs_code_dict (Dict[str, Document]): A dictionary to store Document objects that need code snippets.
+        """
         self.encoding = encoding
         self.code_storage_dict: Dict[str, str] = dict()
         self.needs_code_dict: Dict[str, Document] = dict()
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts the object to a dictionary representation.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the object's data.
+        """
         return default_to_dict(self, encoding=self.encoding)
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CodeCSVToDocument":
+        """
+        Creates an instance of CodeCSVToDocument from a dictionary.
+
+        Args:
+            data (Dict[str, Any]): A dictionary containing the data to create the instance.
+
+        Returns:
+            CodeCSVToDocument: An instance of CodeCSVToDocument created from the provided dictionary.
+        """
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None) -> Dict[str, Any]:
+    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None) -> Dict[str, List[Document]]:
+        """
+        Converts CSV files to a list of Document objects.
+
+        Args:
+            sources (List[Union[str, Path, ByteStream]]): A list of file paths or streams to CSV files.
+            meta (Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]): Optional metadata to be included in the documents.
+
+        Returns:
+            Dict[str, List[Document]]: A dictionary with a single key "documents" containing a list of Document objects.
+        """
         logger.info("Converting CSV files to documents...")
         documents = []
         for source in sources:
