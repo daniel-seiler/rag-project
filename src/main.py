@@ -56,7 +56,7 @@ def response_generator(response: str) -> Iterator[str]:
         time.sleep(0.05)
 
 def main():
-    st.title("Simple chat")
+    st.title("PCL-Chatbot")
     if st.button("Clear chat"):
         clear_chat()
     indexer = IndexerPipeline()
@@ -84,7 +84,7 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
     # Accept user input
-    if prompt := st.chat_input("What is up?"):
+    if prompt := st.chat_input("Ask me questions about PCL!"):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
         # Display user message in chat message container
