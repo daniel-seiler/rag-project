@@ -1,26 +1,10 @@
-# ToDo's
-
-- Scraping
-	- Scraped Website
-		- https://pointclouds.org/documentation/
-		- Backup Seite: https://pandas.pydata.org/docs/development/index.html#development
-	- Indexing levels
-		- Modules > Class > Member Functions/Attributes > Definition (Code Segment)
-		- Modules > Functions > Definition (Code Segment)
-- Indexing
-	- Big to Small Chunking
-- Pipeline
-	- User umschreibt Problem
-	- LLM generiert Fragestellung
-	- Contriever findet relevante Funktionen
-	- LLM generiert Antwort mit Quelle
-	- Random Markdown Datei zum testen
+# Retrieval Augmented Generation with the Point Cloud Library
+The goal of this project is to provide a RAG chatbot for advanced search in software documentations such as the doxygen documentation of the [Point Cloud Library](https://pointclouds.org/documentation/).
 
 ## Setting up environemnt:
-1. install poetry via pipx:
+1. install poetry via pip:
 ```bash
-pip3 install pipx
-pipx install poetry
+pip install poetry
 ```
 
 2. install dependencies from repository root
@@ -45,10 +29,10 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3.1
 ```
 
-2. Start your local qdrant intance
+2. Start your local qdrant instance
 ```bash
 docker run -p 6333:6333 -p 6334:6334 \
-    -v ~/qdrant_storage:/qdrant/storage:z \
+    -v /path/to/local/qdrant_storage:/qdrant/storage:z \
     qdrant/qdrant
 ```
 
@@ -59,3 +43,6 @@ streamlit run main.py
 
 4. An instance of your browser should open, to look something like this:
 ![RAG App Screenshot](docs/Chatbot-main_page.png)
+
+## Pipeline overview
+![Pipeline](docs/pipeline.png)
