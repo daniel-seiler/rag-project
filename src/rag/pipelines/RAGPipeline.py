@@ -126,6 +126,7 @@ Answer:
             whether the operation was successful, and the second element is a list of strings
             containing the response or an error message.
         """
+        self.rag_pipeline.draw("../docs/rag_pipeline.png")
         chat_messages = self._create_chat_messages(messages)
         output = self.rag_pipeline.run(data=
             {

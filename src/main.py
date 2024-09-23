@@ -69,7 +69,7 @@ def main():
         progress_text = "Running preprocessing pipeline and indexing documents..."
         my_bar = st.progress(0, text=progress_text)
         def run_indexer():
-            indexer.run("./scraper/data/")
+            indexer.run("data/")
 
         indexer_thread = threading.Thread(target=run_indexer)
         indexer_thread.start()

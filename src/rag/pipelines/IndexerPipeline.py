@@ -183,7 +183,7 @@ class IndexerPipeline():
         Returns:
             None
         """
-        self.pre_processing_pipeling.draw(folder_path+"/pipeline.png")
+        self.pre_processing_pipeling.draw("../docs/preprocessing_pipeline.png")
         self.pre_processing_pipeling.run(
             {
                 "FileTypeRouter": {"sources": list(Path(folder_path).glob("**/*"))},
